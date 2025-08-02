@@ -11,6 +11,7 @@ import com.example.loginservice.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,8 +23,10 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
@@ -37,12 +40,13 @@ import org.springframework.security.web.authentication.logout.SecurityContextLog
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-
     private final JwtService jwtService;
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtUtil jwtUtil;
     private final SmsAuthenticationProvider smsAuthenticationProvider;
     private final SmsService smsService;
+    private final PasswordEncoder passwordEncoder;
+    //private final ClientRegistrationRepository clientRegistrationRepository;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -66,7 +70,7 @@ public class SecurityConfig {
                 .authenticationProvider(smsAuthenticationProvider)
                 // 將自定義的 UnifiedLoginFilter 放在 UsernamePasswordAuthenticationFilter 之前
                 // UnifiedLoginFilter 構造函數注入 smsService
-                .addFilterBefore(new UnifiedLoginFilter(authenticationManager(http.getSharedObject(AuthenticationConfiguration.class)), jwtUtil, objectMapper(), smsService), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(getUnifiedLoginFilter(), UsernamePasswordAuthenticationFilter.class)
                 // 添加 JWT 過濾器在 UsernamePasswordAuthenticationFilter 之前
                 .addFilterBefore(jwtService, UsernamePasswordAuthenticationFilter.class)
                 // 配置 OAuth 2.0 登入
@@ -91,6 +95,7 @@ public class SecurityConfig {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             response.getWriter().write("OAuth2 login failed: " + exception.getMessage());
                         })
+
                 )
                 // 配置登出
                 .logout(logout -> logout
@@ -110,18 +115,12 @@ public class SecurityConfig {
         return new ObjectMapper();
     }
 
-    // 密碼編碼器
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
     // 認證提供者 (用於帳號密碼認證)
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(customUserDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
+        authProvider.setPasswordEncoder(passwordEncoder);
         return authProvider;
     }
 
@@ -158,4 +157,19 @@ public class SecurityConfig {
     public LogoutHandler logoutHandler() {
         return new SecurityContextLogoutHandler(); // 可以實現更複雜的 JWT 黑名單邏輯
     }
+
+    @Bean
+    public UnifiedLoginFilter getUnifiedLoginFilter() {
+        return new UnifiedLoginFilter();
+    }
+
+//    @Bean
+//    public ClientRegistrationRepository clientRegistrationRepository() {
+//        // 通常 ClientRegistrationRepository 會由 Spring Boot 自動配置，
+//        // 根據 application.properties/yml 中的 spring.security.oauth2.client.registration.*
+//        // 這裡只是為了確保您可以注入它
+//        return clientRegistrationRepository; // 實際注入進來的
+//    }
+
+
 }

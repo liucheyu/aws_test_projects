@@ -4,6 +4,7 @@ import com.example.loginservice.model.User;
 import com.example.loginservice.model.UserLoginProvider;
 import com.example.loginservice.repository.UserLoginProviderRepository;
 import com.example.loginservice.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -16,18 +17,13 @@ import java.util.Map;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
-    private final Map<String, User> users = new HashMap<>(); // 模擬資料庫使用者
     private final UserLoginProviderRepository userLoginProviderRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public CustomUserDetailsService(UserLoginProviderRepository userLoginProviderRepository, UserRepository userRepository, PasswordEncoder passwordEncoder) {
-        this.userLoginProviderRepository = userLoginProviderRepository;
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
 
 //    public CustomUserDetailsService(PasswordEncoder passwordEncoder) {
 //        // 初始化一些模擬使用者
