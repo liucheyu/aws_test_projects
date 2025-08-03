@@ -1,5 +1,6 @@
 package com.example.loginservice.security.filter;
 
+import com.example.loginservice.common.ApiResponse;
 import com.example.loginservice.model.UnifiedLoginRequest;
 import com.example.loginservice.security.auth.SmsAuthenticationToken;
 import com.example.loginservice.service.SmsService; // 引入 SmsService
@@ -39,7 +40,6 @@ public class UnifiedLoginFilter extends OncePerRequestFilter {
     private ObjectMapper objectMapper;
     @Autowired
     private SmsService smsService; // 新增注入 SmsService
-
 
     private static final String LOGIN_URL = "/api/unified-login";
     private static final String OTP_HEADER_NAME = "X-OTP"; // 定義 OTP Header 名稱
@@ -89,9 +89,9 @@ public class UnifiedLoginFilter extends OncePerRequestFilter {
                 // 其他無效的請求組合
                 throw new BadCredentialsException("Invalid login request: Please provide either username/password or phone number (with/without OTP header).");
             }
-
-        } catch (AuthenticationException e) {
-            handleFailure(request, response, e);
+// 驗證失敗應該會進入AuthenticationEntryPoint
+//        } catch (AuthenticationException e) {
+//            handleFailure(request, response, e);
         } catch (IOException e) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -105,10 +105,8 @@ public class UnifiedLoginFilter extends OncePerRequestFilter {
 
         response.setStatus(HttpServletResponse.SC_OK);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        Map<String, String> responseBody = new HashMap<>();
-        responseBody.put("token", jwt);
-        responseBody.put("message", "Login successful");
-        response.getWriter().write(objectMapper.writeValueAsString(responseBody));
+
+        response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.success(Map.of("token", jwt))));
     }
 
     private void handleFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException, ServletException {
@@ -118,4 +116,6 @@ public class UnifiedLoginFilter extends OncePerRequestFilter {
         errorResponse.put("message", exception.getMessage());
         response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
+
+
 }

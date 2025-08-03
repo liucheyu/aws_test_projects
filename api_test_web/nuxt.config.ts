@@ -1,15 +1,22 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+// import tailwindcss from "@tailwindcss/vite";
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
-
+  vite: {
+    plugins: [
+      // tailwindcss()
+    ]
+  },
   modules: [
     '@nuxt/ui',
     '@nuxt/icon',
     '@nuxt/eslint',
     '@nuxt/image',
-    '@nuxt/fonts'
+    // '@nuxtjs/tailwindcss',
+    '@nuxt/fonts',
   ],
+  css: ['~/assets/css/main.css'],
   runtimeConfig: {
     // Default values (used in all environments)
     public: {
@@ -32,5 +39,5 @@ export default defineNuxtConfig({
       },
     },
   },
- 
+
 })

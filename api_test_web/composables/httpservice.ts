@@ -1,3 +1,4 @@
+import type { RuntimeConfig } from "nuxt/schema";
 import type { FetchContext } from "ofetch";
 
 type HttpHeaders = Record<string, string>;
@@ -104,16 +105,16 @@ class HttpAdapter {
   };
 }
 
-const config = useRuntimeConfig();
-const frontendHost = config.public.frontendHost;
 
 class RestApi {
   httpAdapter: HttpAdapter;
   headers = {};
   options?: HttpOptions;
+  runtimeConfig: RuntimeConfig
 
-  constructor() {
+  constructor(runtimeConfig: RuntimeConfig) {
     this.httpAdapter = new HttpAdapter();
+    this.runtimeConfig = runtimeConfig;    
   }
 
   path = (path: string) => {
@@ -122,8 +123,11 @@ class RestApi {
 
   // TODO: 也可定義好類似定義以下的function
   frontendLogin = () => {
-      return this.httpAdapter.setPath(`${frontendHost}/login`);
+      return this.httpAdapter.setPath(`${this.runtimeConfig.public.frontendHost}/login`);
   };
 }
 
-export const restApi = new RestApi();
+export const useRestApi = () => {
+  const runtimeConfig = useRuntimeConfig()
+  return new RestApi(runtimeConfig)
+};

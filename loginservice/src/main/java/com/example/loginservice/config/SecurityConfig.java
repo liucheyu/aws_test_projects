@@ -3,6 +3,9 @@ package com.example.loginservice.config;
 import com.example.loginservice.security.filter.UnifiedLoginFilter;
 import com.example.loginservice.model.CustomOAuth2User;
 import com.example.loginservice.model.User;
+import com.example.loginservice.security.handler.CustomAccessDeniedHandler;
+import com.example.loginservice.security.handler.CustomAuthenticationEntryPoint;
+import com.example.loginservice.security.handler.Oauth2SussecceHandler;
 import com.example.loginservice.security.provider.SmsAuthenticationProvider;
 import com.example.loginservice.service.CustomUserDetailsService;
 import com.example.loginservice.service.JwtService;
@@ -14,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -46,6 +50,9 @@ public class SecurityConfig {
     private final SmsAuthenticationProvider smsAuthenticationProvider;
     private final SmsService smsService;
     private final PasswordEncoder passwordEncoder;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+    private final CustomAccessDeniedHandler customAccessDeniedHandler;
+    private final Oauth2SussecceHandler oauth2SussecceHandler;
     //private final ClientRegistrationRepository clientRegistrationRepository;
 
     @Bean
@@ -57,7 +64,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 // 配置請求授權
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/unified-login", "/oauth2/**", "/login/**").permitAll() // 移除 /api/auth/send-otp
+                        .requestMatchers("/api/unified-login", "/oauth2/**", "/alive").permitAll() // 移除 /api/auth/send-otp
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated() // 其他所有請求都需要認證
                 )
@@ -65,6 +72,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                .exceptionHandling(exhdl -> exhdl
+                        .accessDeniedHandler(customAccessDeniedHandler)
+                        .authenticationEntryPoint(customAuthenticationEntryPoint))
                 // 配置認證提供者
                 .authenticationProvider(authenticationProvider())
                 .authenticationProvider(smsAuthenticationProvider)
@@ -78,18 +88,7 @@ public class SecurityConfig {
                         .authorizationEndpoint(authz -> authz.baseUri("/oauth2/authorization")) // 授權端點
                         .redirectionEndpoint(redirect -> redirect.baseUri("/oauth2/callback/*")) // 回調端點
                         .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService())) // 用於獲取使用者資訊
-                        .successHandler((request, response, authentication) -> {
-                            // OAuth2 登入成功處理
-                            // 在這裡生成 JWT 並返回給前端
-//                            String username = authentication.getName(); // 可能是 Google ID 或 Facebook ID
-//                            String jwt = jwtUtil.generateToken(customUserDetailsService.loadUserByUsername(username)); // 重新載入使用者以獲取完整UserDetails
-                            CustomOAuth2User customOAuth2User = (CustomOAuth2User) authentication.getPrincipal();
-                            User user = customOAuth2User.getUser(); // 獲取您自己的 User 實體
-                            String jwt = jwtUtil.generateToken(user);
-
-                            response.setContentType("application/json");
-                            response.getWriter().write("{\"token\":\"" + jwt + "\", \"message\":\"OAuth2 login successful\"}");
-                        })
+                        .successHandler(oauth2SussecceHandler)
                         .failureHandler((request, response, exception) -> {
                             // OAuth2 登入失敗處理
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -108,11 +107,6 @@ public class SecurityConfig {
                 );
 
         return http.build();
-    }
-
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper();
     }
 
     // 認證提供者 (用於帳號密碼認證)
@@ -166,7 +160,7 @@ public class SecurityConfig {
 //    @Bean
 //    public ClientRegistrationRepository clientRegistrationRepository() {
 //        // 通常 ClientRegistrationRepository 會由 Spring Boot 自動配置，
-//        // 根據 application.properties/yml 中的 spring.security.oauth2.client.registration.*
+//        // 根據 application.yml 中的 spring.security.oauth2.client.registration.*
 //        // 這裡只是為了確保您可以注入它
 //        return clientRegistrationRepository; // 實際注入進來的
 //    }
