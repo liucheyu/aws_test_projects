@@ -8,6 +8,8 @@ jwt:
   expiration: 3600000 # 1 小時 (毫秒)
 
 spring:
+  config:
+    import: secrets.yaml
   application:
     name: loginservice
   security:
@@ -15,20 +17,23 @@ spring:
       client:
         registration:
           google:
-            client-id: YOUR_GOOGLE_CLIENT_ID # 替換為您的 Google Client ID
-            client-secret: YOUR_GOOGLE_CLIENT_SECRET # 替換為您的 Google Client Secret
-            redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}" # Spring Security 預設
+#            redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}" # Spring Security 預設
             scope:
               - openid
               - profile
               - email
           facebook:
-            client-id: YOUR_FACEBOOK_CLIENT_ID # 替換為您的 Facebook Client ID
-            client-secret: YOUR_FACEBOOK_CLIENT_SECRET # 替換為您的 Facebook Client Secret
-            redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}" # Spring Security 預設
+#            redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}" # Spring Security 預設
             scope:
               - public_profile
               - email
+          github:
+            # 這是 Spring Security 預設的回調路徑，通常不需要手動設定
+#            redirect-uri: http://localhost:8080/login/oauth2/code/github
+            # 設定權限範圍，根據你的應用程式需求調整
+            scope:
+              - user
+              - user:email
   h2:
     console:
       enabled: true
@@ -43,3 +48,7 @@ spring:
       hibernate:
         ddl-auto: update
       show-sql: true
+  data:
+    redis:
+      host: localhost
+      port: 6379

@@ -28,6 +28,9 @@ public class ApiResponse<T> {
     }
 
     // 成功響應的靜態工廠方法
+    public static <T> ApiResponse<T> success() {
+        return new ApiResponse<>(ResponseCode.SUCCESS.getStatus(), ResponseCode.SUCCESS.getMessage(), null);
+    }
     public static <T> ApiResponse<T> success(T data) {
         return new ApiResponse<>(ResponseCode.SUCCESS.getStatus(), ResponseCode.SUCCESS.getMessage(), data);
     }

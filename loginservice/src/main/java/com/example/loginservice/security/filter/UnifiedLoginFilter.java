@@ -10,8 +10,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.AllArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus; // 引入 HttpStatus
@@ -22,7 +20,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -59,11 +56,11 @@ public class UnifiedLoginFilter extends OncePerRequestFilter {
             UnifiedLoginRequest loginRequest = objectMapper.readValue(request.getInputStream(), UnifiedLoginRequest.class);
             String otpHeader = request.getHeader(OTP_HEADER_NAME); // 獲取 OTP Header
 
-            if (loginRequest.getPhoneNumber() != null && loginRequest.getUsername() == null && loginRequest.getPassword() == null) {
+            if (loginRequest.getMobilePhoneNumber() != null && loginRequest.getUsername() == null && loginRequest.getPassword() == null) {
                 // 這是電話號碼相關的請求
                 if (otpHeader == null || otpHeader.isEmpty()) {
                     // Scenario 1: 沒有 X-OTP Header -> 發送 OTP
-                    smsService.generateOtp(loginRequest.getPhoneNumber());
+                    smsService.generateOtp(loginRequest.getMobilePhoneNumber());
                     response.setStatus(HttpStatus.OK.value());
                     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                     response.getWriter().write(objectMapper.writeValueAsString(Map.of("message", "OTP sent successfully. Please provide OTP in X-OTP header for login.")));
@@ -71,13 +68,13 @@ public class UnifiedLoginFilter extends OncePerRequestFilter {
                 } else {
                     // Scenario 2: 有 X-OTP Header -> 電話號碼 + OTP 登入驗證
                     Authentication authenticationRequest = new SmsAuthenticationToken(
-                            loginRequest.getPhoneNumber(),
+                            loginRequest.getMobilePhoneNumber(),
                             otpHeader // OTP 從 Header 獲取
                     );
                     Authentication authenticationResult = authenticationManager.authenticate(authenticationRequest);
                     handleSuccess(request, response, authenticationResult);
                 }
-            } else if (loginRequest.getUsername() != null && loginRequest.getPassword() != null && loginRequest.getPhoneNumber() == null) {
+            } else if (loginRequest.getUsername() != null && loginRequest.getPassword() != null && loginRequest.getMobilePhoneNumber() == null) {
                 // Scenario 3: 帳號密碼登入
                 Authentication authenticationRequest = new UsernamePasswordAuthenticationToken(
                         loginRequest.getUsername(),
