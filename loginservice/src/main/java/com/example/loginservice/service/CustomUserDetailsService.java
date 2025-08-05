@@ -1,5 +1,7 @@
 package com.example.loginservice.service;
 
+import com.example.loginservice.common.ApiCommonException;
+import com.example.loginservice.common.ResponseCode;
 import com.example.loginservice.model.User;
 import com.example.loginservice.model.UserLoginProvider;
 import com.example.loginservice.repository.UserLoginProviderRepository;
@@ -18,12 +20,11 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class CustomUserDetailsService implements UserDetailsService {
+public class CustomUserDetailsService {
 
     private final UserLoginProviderRepository userLoginProviderRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-
 
 //    public CustomUserDetailsService(PasswordEncoder passwordEncoder) {
 //        // 初始化一些模擬使用者
@@ -31,21 +32,33 @@ public class CustomUserDetailsService implements UserDetailsService {
 //        users.put("admin", new User("admin", passwordEncoder.encode("adminpass"), "admin@example.com", "0900000002",Arrays.asList("USER", "ADMIN"), "local", null));
 //    }
 
-    @Override
-    @Transactional
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // 對於帳號密碼登入，我們查找 provider_name='local' 且 provider_user_id=username 的記錄
-        UserLoginProvider localProvider = userLoginProviderRepository.findByProviderNameAndProviderUserId("local", username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
-        User user = localProvider.getUser(); // 獲取對應的使用者主體
-        user.setPassword(localProvider.getCredentials()); // 將密碼憑證設定回 UserDetails 物件
+    @Transactional
+    public User loadUserByUsername(String username) throws UsernameNotFoundException {
+        // 對於帳號密碼登入，我們查找 provider_name='local' 且 provider_user_id=username 的記錄
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+    }
+
+    public User loadUserByProviderUserId(long userId) throws UsernameNotFoundException {
+
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    }
+
+    @Transactional
+    public User loadUserByUserId(long userId) throws UsernameNotFoundException {
+        // 對於帳號密碼登入，我們查找 provider_name='local' 且 provider_user_id=username 的記錄
+
+        User user =  userRepository.findById(userId)
+                .orElseThrow(() -> new ApiCommonException(ResponseCode.USER_NOT_FOUND));
+        user.setPassword(user.getPassword()); // 將密碼憑證設定回 UserDetails 物件
 
         return user;
     }
 
     @Transactional
-    public UserDetails loadUserByPhoneNumber(String phoneNumber) throws UsernameNotFoundException {
+    public User loadUserByPhoneNumber(String phoneNumber) throws UsernameNotFoundException {
         // 查找 Users 表中對應電話號碼的使用者
         Optional<User> byPhoneNumber = userRepository.findByPhoneNumber(phoneNumber);
 
@@ -65,7 +78,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     // 可以在這裡添加根據 provider 和 providerId 查找或創建使用者的邏輯
-    public UserDetails loadOrCreateOAuth2User(String providerName, String providerUserId, String email, String displayName, String profilePictureUrl) {
+    public User loadOrCreateOAuth2User(String providerName, String providerUserId, String email, String displayName, String profilePictureUrl) {
         // 1. 嘗試查找現有的登入提供者綁定
         Optional<UserLoginProvider> existingProvider = userLoginProviderRepository.findByProviderNameAndProviderUserId(providerName, providerUserId);
 
@@ -146,9 +159,9 @@ public class CustomUserDetailsService implements UserDetailsService {
         localProvider.setUser(newUser);
         localProvider.setProviderName("local");
         localProvider.setProviderUserId(username); // 對於本地登入，provider_user_id 可以是 username
-        localProvider.setCredentials(passwordEncoder.encode(password)); // 加密密碼
         userLoginProviderRepository.save(localProvider);
 
         return newUser;
     }
+
 }

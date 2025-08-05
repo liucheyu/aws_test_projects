@@ -30,9 +30,6 @@ public class UserLoginProvider {
     @Column(name = "provider_user_id", length = 255, nullable = false)
     private String providerUserId;
 
-    @Column(name = "credentials", length = 255) // 儲存加密後的密碼，僅限 local
-    private String credentials;
-
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

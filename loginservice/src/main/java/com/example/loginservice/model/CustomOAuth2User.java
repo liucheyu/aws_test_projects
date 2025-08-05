@@ -2,9 +2,13 @@ package com.example.loginservice.model;
 
 
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -12,14 +16,16 @@ import java.util.Map;
  * 和您應用程式內部的使用者模型。
  * 它包裝了您自己的 User 實體，並代理了原始 OAuth2User 的屬性。
  */
-public class CustomOAuth2User implements OAuth2User {
+public class CustomOAuth2User implements OAuth2User, OidcUser {
 
     private final User user; // 您應用程式自己的使用者實體
-    private final OAuth2User oauth2User; // 原始的 OAuth2User (來自 Google/Facebook)
+    private final OAuth2User oauth2User;
+    private final OidcUser oidcUser;
 
-    public CustomOAuth2User(User user, OAuth2User oauth2User) {
+    public CustomOAuth2User(User user, OAuth2User oauth2User, OidcUser oidcUser) {
         this.user = user;
         this.oauth2User = oauth2User;
+        this.oidcUser = oidcUser;
     }
 
     // --- 實現 OAuth2User 介面 ---
@@ -27,7 +33,11 @@ public class CustomOAuth2User implements OAuth2User {
     @Override
     public Map<String, Object> getAttributes() {
         // 返回原始 OAuth2User 的屬性，這些是從第三方平台獲取的完整屬性
-        return oauth2User.getAttributes();
+        if(oauth2User != null) {
+            return oauth2User.getAttributes();
+        }
+
+        return oidcUser.getAttributes();
     }
 
     @Override
@@ -40,7 +50,10 @@ public class CustomOAuth2User implements OAuth2User {
     public String getName() {
         // 返回在第三方平台中的唯一標識符
         // oauth2User.getName() 通常返回的是 sub (Google) 或 id (Facebook)
-        return oauth2User.getName();
+        if(oauth2User != null) {
+            return oauth2User.getName();
+        }
+        return oidcUser.getName();
     }
 
     // --- 可以添加額外的方法來方便訪問您 User 實體的屬性 ---
@@ -53,9 +66,26 @@ public class CustomOAuth2User implements OAuth2User {
         return user.getEmail();
     }
 
-
-
     public User getUser() {
         return user;
+    }
+
+    @Override
+    public Map<String, Object> getClaims() {
+        if(oidcUser != null) {
+            return oidcUser.getClaims();
+        }
+
+        return Collections.EMPTY_MAP;
+    }
+
+    @Override
+    public OidcUserInfo getUserInfo() {
+        return oidcUser.getUserInfo();
+    }
+
+    @Override
+    public OidcIdToken getIdToken() {
+        return oidcUser.getIdToken();
     }
 }

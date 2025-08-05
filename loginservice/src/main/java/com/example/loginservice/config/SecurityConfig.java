@@ -7,6 +7,7 @@ import com.example.loginservice.security.handler.CustomAccessDeniedHandler;
 import com.example.loginservice.security.handler.CustomAuthenticationEntryPoint;
 import com.example.loginservice.security.handler.Oauth2FailureHandler;
 import com.example.loginservice.security.handler.Oauth2SussecceHandler;
+import com.example.loginservice.security.provider.CustomUsernamePasswordAuthenticationProvider;
 import com.example.loginservice.security.provider.SmsAuthenticationProvider;
 import com.example.loginservice.service.CustomUserDetailsService;
 import com.example.loginservice.service.JwtService;
@@ -28,21 +29,36 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.oauth2.core.user.OAuth2UserAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import org.springframework.util.StringUtils;
+
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 @Configuration
 @EnableWebSecurity
@@ -59,6 +75,7 @@ public class SecurityConfig {
     private final CustomAccessDeniedHandler customAccessDeniedHandler;
     private final Oauth2SussecceHandler oauth2SussecceHandler;
     private final Oauth2FailureHandler oauth2FailureHandler;
+    private final CustomUsernamePasswordAuthenticationProvider customUsernamePasswordAuthenticationProvider;
     //private final ClientRegistrationRepository clientRegistrationRepository;
 
     @Bean
@@ -82,7 +99,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(customAccessDeniedHandler)
                         .authenticationEntryPoint(customAuthenticationEntryPoint))
                 // 配置認證提供者
-                .authenticationProvider(authenticationProvider())
+                .authenticationProvider(customUsernamePasswordAuthenticationProvider)
                 .authenticationProvider(smsAuthenticationProvider)
                 // 將自定義的 UnifiedLoginFilter 放在 UsernamePasswordAuthenticationFilter 之前
                 // UnifiedLoginFilter 構造函數注入 smsService
@@ -91,14 +108,14 @@ public class SecurityConfig {
                 .addFilterBefore(jwtService, UsernamePasswordAuthenticationFilter.class)
                 // 配置 OAuth 2.0 登入
                 .oauth2Login(oauth2 -> oauth2
-                        .authorizationEndpoint(authz -> authz.baseUri("/oauth2/authorization")) // 授權端點
+                                .authorizationEndpoint(authz -> authz.baseUri("/oauth2/authorization")) // 授權端點
 //                        .redirectionEndpoint(redirect -> redirect.baseUri("/oauth2/callback/*")) // 回調端點
-                        .userInfoEndpoint(userInfo -> {
-                            userInfo.oidcUserService(OidcUserService());
-                            userInfo.userService(oAuth2UserService());
-                        }) // 用於獲取使用者資訊
-                        .successHandler(oauth2SussecceHandler)
-                        .failureHandler(oauth2FailureHandler)
+                                .userInfoEndpoint(userInfo -> {
+                                    userInfo.oidcUserService(oidcUserService());
+                                    userInfo.userService(oAuth2UserService());
+                                }) // 用於獲取使用者資訊
+                                .successHandler(oauth2SussecceHandler)
+                                .failureHandler(oauth2FailureHandler)
                 )
                 // 配置登出
                 .logout(logout -> logout
@@ -113,14 +130,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 認證提供者 (用於帳號密碼認證)
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(customUserDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder);
-        return authProvider;
-    }
 
     // 認證管理器 (用於觸發認證過程)
     @Bean
@@ -141,39 +150,54 @@ public class SecurityConfig {
             String name = oauth2User.getAttribute("name");
             String userPictureUrl = oauth2User.getAttribute("picture");
 
-            log.info(oauth2User.toString());
+            log.info("oauth2User User: {}", oauth2User);
 
             // 根據 provider 和 providerId 在您的系統中查找或創建使用者
             // 並返回一個實現 UserDetails 的物件 (這裡使用我們自己的 User 類)
-            UserDetails userDetails = customUserDetailsService.loadOrCreateOAuth2User(registrationId, providerId, email, name, userPictureUrl);
+            User user = customUserDetailsService.loadOrCreateOAuth2User(registrationId, providerId, email, name, userPictureUrl);
 
-            return new CustomOAuth2User((User) userDetails, oauth2User);
+            return new CustomOAuth2User(user, oauth2User, null);
         };
     }
 
-    @Bean
-    public OAuth2UserService<OidcUserRequest, OidcUser> OidcUserService() {
-        DefaultOAuth2UserService delegate = new DefaultOAuth2UserService();
-        return userRequest -> {
-            OAuth2User oauth2User = delegate.loadUser(userRequest);
-            String registrationId = userRequest.getClientRegistration().getRegistrationId(); // google, facebook
-            String providerId = oauth2User.getName(); // OAuth2 User 的 ID
+    private OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService() {
+        final OidcUserService delegate = new OidcUserService();
 
-            String email = oauth2User.getAttribute("email");
-            String name = oauth2User.getAttribute("name");
-            String userPictureUrl = oauth2User.getAttribute("picture");
+        return (userRequest) -> {
+            // Delegate to the default implementation for loading a user
+            OidcUser oidcUser = delegate.loadUser(userRequest);
 
-            log.info(oauth2User.toString());
+            OAuth2AccessToken accessToken = userRequest.getAccessToken();
+            Set<GrantedAuthority> mappedAuthorities = new HashSet<>();
 
-            // 根據 provider 和 providerId 在您的系統中查找或創建使用者
-            // 並返回一個實現 UserDetails 的物件 (這裡使用我們自己的 User 類)
-            UserDetails userDetails = customUserDetailsService.loadOrCreateOAuth2User(registrationId, providerId, email, name, userPictureUrl);
+            // TODO
+            // 1) Fetch the authority information from the protected resource using accessToken
+            // 2) Map the authority information to one or more GrantedAuthority's and add it to mappedAuthorities
 
-            return new CustomOAuth2User((User) userDetails, oauth2User);
+            // 3) Create a copy of oidcUser but use the mappedAuthorities instead
+            ClientRegistration.ProviderDetails providerDetails = userRequest.getClientRegistration().getProviderDetails();
+            String userNameAttributeName = providerDetails.getUserInfoEndpoint().getUserNameAttributeName();
+            if (StringUtils.hasText(userNameAttributeName)) {
+                oidcUser = new DefaultOidcUser(mappedAuthorities, oidcUser.getIdToken(), oidcUser.getUserInfo(), userNameAttributeName);
+            } else {
+                oidcUser = new DefaultOidcUser(mappedAuthorities, oidcUser.getIdToken(), oidcUser.getUserInfo());
+            }
+
+            log.info("OIDC User: {}", oidcUser);
+            String registrationId = userRequest.getClientRegistration().getRegistrationId();
+            String providerId = oidcUser.getName();
+            String email = oidcUser.getAttribute("email");
+            String name = oidcUser.getAttribute("name");
+            String userPictureUrl =  oidcUser.getAttribute("picture");
+
+            User user = customUserDetailsService.loadOrCreateOAuth2User(registrationId, providerId, email, name, userPictureUrl);
+
+            return new CustomOAuth2User(user, null, oidcUser);
         };
     }
 
-    // 登出處理器 (清除 JWT 通常由前端刪除，這裡只是示例)
+
+            // 登出處理器 (清除 JWT 通常由前端刪除，這裡只是示例)
     @Bean
     public LogoutHandler logoutHandler() {
         return new SecurityContextLogoutHandler(); // 可以實現更複雜的 JWT 黑名單邏輯

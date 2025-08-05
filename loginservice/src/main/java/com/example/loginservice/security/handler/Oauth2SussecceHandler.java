@@ -31,7 +31,7 @@ public class Oauth2SussecceHandler implements AuthenticationSuccessHandler {
         log.info(authentication.toString());
         CustomOAuth2User customOAuth2User = (CustomOAuth2User) authentication.getPrincipal();
         User user = customOAuth2User.getUser(); // 獲取您自己的 User 實體
-        String jwt = jwtUtil.generateToken(user);
+        String jwt = jwtUtil.generateToken(user.getId() + "");
 
         response.setContentType("application/json");
 

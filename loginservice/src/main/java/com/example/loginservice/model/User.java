@@ -24,6 +24,9 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // 使用 Long 對應 BIGINT
 
+    @Column
+    private String password;
+
     @Column(unique = true, nullable = false)
     private String email;
 
@@ -48,10 +51,6 @@ public class User implements UserDetails {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // 不直接在 User 實體中儲存密碼，密碼儲存在 UserLoginProvider 中
-    // 但為了 UserDetails 介面，我們需要一個 transient 屬性或從關聯表中獲取
-    @Transient // 不會映射到資料庫欄位
-    private String password; // UserDetails 需要的密碼字段，實際由 UserLoginProvider 提供
 
     @ElementCollection(fetch = FetchType.EAGER) // 立即載入角色
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))

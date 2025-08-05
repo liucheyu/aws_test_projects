@@ -2,6 +2,7 @@ package com.example.loginservice.security.provider;
 
 
 import com.example.loginservice.model.User;
+import com.example.loginservice.security.auth.ActivateCodeAuthenticationToken;
 import com.example.loginservice.security.auth.SmsAuthenticationToken;
 import com.example.loginservice.service.CustomUserDetailsService;
 import com.example.loginservice.service.SmsService;
@@ -11,7 +12,6 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
@@ -20,14 +20,14 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
-public class SmsAuthenticationProvider implements AuthenticationProvider {
+public class ActivateCodeAuthenticationProvider implements AuthenticationProvider {
 
     private final CustomUserDetailsService customUserDetailsService;
     private final SmsService smsService;
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-        SmsAuthenticationToken smsAuthToken = (SmsAuthenticationToken) authentication;
+        ActivateCodeAuthenticationToken smsAuthToken = (ActivateCodeAuthenticationToken) authentication;
 
         String phoneNumber = (String) smsAuthToken.getPrincipal();
         String otp = (String) smsAuthToken.getCredentials();
@@ -54,6 +54,6 @@ public class SmsAuthenticationProvider implements AuthenticationProvider {
     @Override
     public boolean supports(Class<?> authentication) {
         // 判斷這個 Provider 是否支持 SmsAuthenticationToken 類型
-        return SmsAuthenticationToken.class.isAssignableFrom(authentication);
+        return ActivateCodeAuthenticationToken.class.isAssignableFrom(authentication);
     }
 }

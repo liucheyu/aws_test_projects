@@ -6,10 +6,11 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 @Data
-@AllArgsConstructor
-public class SignInEmailRequest {
+public class SignInRequest {
     @NotBlank(message = "Username cannot be empty")
     @Email
     private String email;
+    @NotBlank(message = "Password cannot be empty")
     private String password;
+    private String verificationCode;
 }
