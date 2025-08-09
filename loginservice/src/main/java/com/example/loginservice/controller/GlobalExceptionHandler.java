@@ -3,6 +3,7 @@ package com.example.loginservice.controller;
 import com.example.loginservice.common.ApiCommonException;
 import com.example.loginservice.common.ApiResponse;
 import com.example.loginservice.common.ResponseCode;
+import com.example.loginservice.common.ValidateException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -17,15 +18,25 @@ public class GlobalExceptionHandler {
     /**
      * 專門處理自定義 BusinessException 的方法
      */
-    @ExceptionHandler(ApiCommonException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBusinessException(ApiCommonException ex) {
+    @ExceptionHandler({ApiCommonException.class, ValidateException.class})
+    public ResponseEntity<ApiResponse<Void>> handleBusinessException(Throwable throwable) {
         // 從 BusinessException 中獲取 ErrorCode
-        ResponseCode errorCode = ex.getResponseCode();
+        ResponseCode errorCode = ResponseCode.INTERNAL_SERVER_ERROR;
+        String errorMessage = ResponseCode.INTERNAL_SERVER_ERROR.getMessage();
+        if(throwable instanceof ApiCommonException) {
+            errorCode = ((ApiCommonException)throwable).getResponseCode();
+            errorMessage = errorCode.getMessage();
+        }
+
+        if(throwable instanceof ValidateException) {
+            errorCode = ((ValidateException)throwable).getResponseCode();
+            errorMessage = errorCode.getMessage();
+        }
 
         // 使用 ErrorCode 和 Exception 的訊息來構建 ApiResponse
         return ResponseEntity
                 .ok()
-                .body(ApiResponse.error(errorCode, ex.getMessage()));
+                .body(ApiResponse.error(errorCode, errorMessage));
     }
 
     // 處理所有未處理的通用異常

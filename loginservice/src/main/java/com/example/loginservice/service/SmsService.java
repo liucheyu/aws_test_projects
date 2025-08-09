@@ -22,6 +22,11 @@ public class SmsService {
 
     public void sendAndCacheOtp(String phoneNumber) throws JsonProcessingException {
         String key = PrefixUtil.getKeyWithPrefix(PrefixUtil.Prefix.MOBILE_PHONE, phoneNumber);
+
+        if (redisTemplate.hasKey(key)) {
+            throw new ApiCommonException(ResponseCode.ACTIVATION_CODE_NOT_EXPIRED);
+        }
+
         String opt = OptUtil.generateOpt(6);
         redisTemplate.opsForValue().set(key, opt, Duration.ofMillis(OTP_VALID_DURATION_MS));
         // 這裡會呼叫第三方簡訊 API 發送簡訊
@@ -30,6 +35,11 @@ public class SmsService {
 
     public void sendAndCacheOtp(SignInMobilePhoneRequest signInRequest) throws JsonProcessingException {
         String key = PrefixUtil.getKeyWithPrefix(PrefixUtil.Prefix.MOBILE_PHONE, signInRequest.getEmail());
+
+        if (redisTemplate.hasKey(key)) {
+            throw new ApiCommonException(ResponseCode.ACTIVATION_CODE_NOT_EXPIRED);
+        }
+
         String opt = OptUtil.generateOpt(6);
         signInRequest.setVerificationCode(opt);
         redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(signInRequest), Duration.ofMillis(OTP_VALID_DURATION_MS));

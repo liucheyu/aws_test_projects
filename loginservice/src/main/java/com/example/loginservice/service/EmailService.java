@@ -71,5 +71,13 @@ public class EmailService {
         redisTemplate.delete(key);
     }
 
+    public boolean validateActivationCode(String email, String activationCode) {
+        String key = PrefixUtil.getKeyWithPrefix(PrefixUtil.Prefix.EMAIL, email);
+
+        String cacheOtp = redisTemplate.opsForValue().get(key);
+
+        return activationCode.equals(cacheOtp);
+    }
+
 
 }

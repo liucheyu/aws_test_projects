@@ -1,11 +1,17 @@
 package com.example.loginservice.security.provider;
 
 
+import com.example.loginservice.common.ResponseCode;
+import com.example.loginservice.common.ValidateException;
+import com.example.loginservice.model.UnifiedLoginRequest;
 import com.example.loginservice.model.User;
 import com.example.loginservice.security.auth.ActivateCodeAuthenticationToken;
+import com.example.loginservice.security.auth.OptAuthenticationToken;
 import com.example.loginservice.security.auth.SmsAuthenticationToken;
 import com.example.loginservice.service.CustomUserDetailsService;
+import com.example.loginservice.service.EmailService;
 import com.example.loginservice.service.SmsService;
+import com.example.loginservice.util.PrefixUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -13,6 +19,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
@@ -23,37 +30,45 @@ import org.springframework.stereotype.Component;
 public class ActivateCodeAuthenticationProvider implements AuthenticationProvider {
 
     private final CustomUserDetailsService customUserDetailsService;
+    private final EmailService emailService;
     private final SmsService smsService;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-        ActivateCodeAuthenticationToken smsAuthToken = (ActivateCodeAuthenticationToken) authentication;
-
-        String phoneNumber = (String) smsAuthToken.getPrincipal();
-        String otp = (String) smsAuthToken.getCredentials();
-
-        // 1. 根據電話號碼載入使用者
+        OptAuthenticationToken optAuthenticationToken = (OptAuthenticationToken) authentication;
         User userDetails;
+        UnifiedLoginRequest request = optAuthenticationToken.getRequest();
         try {
-            // 注意：這裡假設 loadUserByPhoneNumber 返回的是您的 UserDetails 實現
-            userDetails = customUserDetailsService.loadUserByPhoneNumber(phoneNumber);
+
+            userDetails = customUserDetailsService.loadUserByUsername(request.getUsername());
+            if(!userDetails.getPassword().equals(passwordEncoder.encode(request.getPassword()))) {
+                throw new ValidateException(ResponseCode.INVALID_LOGIN_REQUEST, "Username or Password not match.");
+            }
         } catch (UsernameNotFoundException e) {
-            throw new BadCredentialsException("Phone number not registered.");
+            throw new BadCredentialsException("Username or Password not match.");
         }
 
-        // 2. 驗證 OTP
-        if (!smsService.validateOtp(phoneNumber, otp)) {
-            throw new BadCredentialsException("Invalid or expired OTP.");
+        switch (request.getType()) {
+            case 1:
+                if(emailService.validateActivationCode(request.getUsername(), optAuthenticationToken.getOtp())) {
+                    throw new ValidateException(ResponseCode.INVALID_LOGIN_REQUEST, "Invalid or expired OTP.");
+                }
+                break;
+            case 2:
+                if (!smsService.validateOtp(request.getMobilePhoneNumber(), optAuthenticationToken.getOtp())) {
+                    throw new ValidateException(ResponseCode.INVALID_LOGIN_REQUEST, "Invalid or expired OTP.");
+                }
+                break;
+            default: throw new ValidateException(ResponseCode.INVALID_LOGIN_REQUEST, "type not found.");
         }
 
-        // 3. 認證成功，返回一個已認證的 Authentication 物件
-        // 通常會返回 UsernamePasswordAuthenticationToken，因為它是最通用的 UserDetails 包裝器
         return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
     }
 
     @Override
     public boolean supports(Class<?> authentication) {
         // 判斷這個 Provider 是否支持 SmsAuthenticationToken 類型
-        return ActivateCodeAuthenticationToken.class.isAssignableFrom(authentication);
+        return OptAuthenticationToken.class.isAssignableFrom(authentication);
     }
 }

@@ -1,5 +1,7 @@
 package com.example.loginservice.security.provider;
 
+import com.example.loginservice.common.ResponseCode;
+import com.example.loginservice.common.ValidateException;
 import com.example.loginservice.model.User;
 import com.example.loginservice.repository.UserRepository;
 import com.example.loginservice.service.CustomUserDetailsService;
@@ -39,7 +41,7 @@ public class CustomUsernamePasswordAuthenticationProvider implements Authenticat
             return new UsernamePasswordAuthenticationToken(user, null, Collections.emptyList());
         } else {
             // 4. 如果驗證失敗，拋出異常
-            throw new BadCredentialsException("Invalid username or password");
+            throw new ValidateException(ResponseCode.INVALID_LOGIN_REQUEST, "Username or Password not match.");
         }
 
     }

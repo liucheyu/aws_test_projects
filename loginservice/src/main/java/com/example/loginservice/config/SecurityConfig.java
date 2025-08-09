@@ -87,7 +87,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 // 配置請求授權
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/unified-login", "/oauth2/**", "/login/oauth2/**", "/alive", "/api/user/sign-in/**").permitAll() // 移除 /api/auth/send-otp
+                        .requestMatchers("/api/unified-login", "/oauth2/**", "/login/oauth2/**", "/alive", "/user/sign-in/**").permitAll() // 移除 /api/auth/send-otp
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated() // 其他所有請求都需要認證
                 )

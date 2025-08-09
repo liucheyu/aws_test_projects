@@ -1,9 +1,11 @@
 package com.example.loginservice.security.filter;
 
 import com.example.loginservice.common.ApiResponse;
+import com.example.loginservice.common.ResponseCode;
+import com.example.loginservice.common.ValidateException;
 import com.example.loginservice.model.UnifiedLoginRequest;
 import com.example.loginservice.model.User;
-import com.example.loginservice.security.auth.SmsAuthenticationToken;
+import com.example.loginservice.security.auth.OptAuthenticationToken;
 import com.example.loginservice.service.CustomUserDetailsService;
 import com.example.loginservice.service.EmailService;
 import com.example.loginservice.service.SmsService; // 引入 SmsService
@@ -16,7 +18,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus; // 引入 HttpStatus
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -55,82 +56,94 @@ public class UnifiedLoginFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         // 只處理指定登入 URL 的 POST 請求
-        if (!request.getRequestURI().equals(LOGIN_URL) || !request.getMethod().equals(HttpMethod.POST.name())) {
+        if (!request.getRequestURI().equals(LOGIN_URL) && !request.getMethod().equals(HttpMethod.POST.name())) {
             filterChain.doFilter(request, response);
             return;
         }
 
+        // 第一段驗證帳密後寄送驗證碼，二階段做驗證驗證碼，然後看是哪一種，1: email, 2:手機
+        //try {
+        // 解析請求體為 UnifiedLoginRequest
+        UnifiedLoginRequest loginRequest = objectMapper.readValue(request.getInputStream(), UnifiedLoginRequest.class);
+        String otpHeader = request.getHeader(OTP_HEADER_NAME); // 獲取 OTP Header
 
-        // 第一些段先寄送，二階段做驗證，看是哪一種，1: email, 2:手機
+        if (!StringUtils.hasLength(otpHeader)) {
+            // 第一階段，寄送驗證碼
+            Authentication authenticationRequest = new UsernamePasswordAuthenticationToken(
+                    loginRequest.getUsername(),
+                    loginRequest.getPassword()
+            );
+            Authentication authenticationResult = authenticationManager.authenticate(authenticationRequest);
 
-        try {
-            // 解析請求體為 UnifiedLoginRequest
-            UnifiedLoginRequest loginRequest = objectMapper.readValue(request.getInputStream(), UnifiedLoginRequest.class);
-            String otpHeader = request.getHeader(OTP_HEADER_NAME); // 獲取 OTP Header
-
-            if (!StringUtils.hasLength(otpHeader)) {
-                // 第一階段，寄送驗證碼
-                Authentication authenticationRequest = new UsernamePasswordAuthenticationToken(
-                        loginRequest.getUsername(),
-                        loginRequest.getPassword()
-                );
-                Authentication authenticationResult = authenticationManager.authenticate(authenticationRequest);
-                switch (loginRequest.getType()) {
-                    case 1:
-                        String opt = OptUtil.generateOpt(6);
-                        emailService.sendEmail(loginRequest.getUsername(), "", opt);
-                        emailService.cacheCode(loginRequest.getUsername(), opt);
-                        break;
-                    case 2:
-                        smsService.sendAndCacheOtp(loginRequest);
-                        break;
-                    default:
-                        throw new BadCredentialsException("Invalid login request: Please provide either username/password or phone number (with/without OTP header).");
-                }
-
-                response.setStatus(HttpServletResponse.SC_OK);
-                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-
-                response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.success()));
-            }
-
-            if (loginRequest.getMobilePhoneNumber() != null && loginRequest.getUsername() == null && loginRequest.getPassword() == null) {
-                // 這是電話號碼相關的請求
-                if (otpHeader == null || otpHeader.isEmpty()) {
-                    // 1: 沒有 X-OTP Header -> 發送 OTP
+            switch (loginRequest.getType()) {
+                case 1:
+                    String opt = OptUtil.generateOpt(6);
+                    emailService.sendEmail(loginRequest.getUsername(), "", opt);
+                    emailService.cacheCode(loginRequest.getUsername(), opt);
+                    break;
+                case 2:
                     smsService.sendAndCacheOtp(loginRequest.getMobilePhoneNumber());
-                    response.setStatus(HttpStatus.OK.value());
-                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                    response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.success()));
-                } else {
-                    // 2: 有 X-OTP Header -> 電話號碼 + OTP 登入驗證
-                    Authentication authenticationRequest = new SmsAuthenticationToken(
-                            loginRequest.getMobilePhoneNumber(),
-                            otpHeader // OTP 從 Header 獲取
-                    );
-                    Authentication authenticationResult = authenticationManager.authenticate(authenticationRequest);
-                    handleSuccess(request, response, authenticationResult);
-                }
-            } else if (loginRequest.getUsername() != null && loginRequest.getPassword() != null && loginRequest.getMobilePhoneNumber() == null) {
-                // Scenario 3: 帳號密碼登入，帳密會先暫存，等待郵件激活
-                Authentication authenticationRequest = new UsernamePasswordAuthenticationToken(
-                        loginRequest.getUsername(),
-                        loginRequest.getPassword()
-                );
-                Authentication authenticationResult = authenticationManager.authenticate(authenticationRequest);
-                handleSuccess(request, response, authenticationResult);
-            } else {
-                // 其他無效的請求組合
-                throw new BadCredentialsException("Invalid login request: Please provide either username/password or phone number (with/without OTP header).");
+                    break;
+                default:
+                    throw new ValidateException(ResponseCode.INVALID_LOGIN_REQUEST, "Login type error");
             }
-// 驗證失敗應該會進入AuthenticationEntryPoint
-//        } catch (AuthenticationException e) {
-//            handleFailure(request, response, e);
-        } catch (IOException e) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+            response.setStatus(HttpServletResponse.SC_OK);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            response.getWriter().write(objectMapper.writeValueAsString(Map.of("message", "Invalid request body or an internal server error occurred.")));
+
+            response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.success()));
+        } else {
+            // 第二階段，驗證驗證碼
+            Authentication authenticationRequest = switch (loginRequest.getType()) {
+                case 1 ->
+                        new OptAuthenticationToken(loginRequest, otpHeader);
+                case 2 ->
+                        new OptAuthenticationToken(loginRequest, otpHeader);
+                default ->
+                        throw new ValidateException(ResponseCode.INVALID_LOGIN_REQUEST, "Login type error");
+            };
+
+            Authentication authenticationResult = authenticationManager.authenticate(authenticationRequest);
+            handleSuccess(request, response, authenticationResult);
         }
+
+//            if (loginRequest.getMobilePhoneNumber() != null && loginRequest.getUsername() == null && loginRequest.getPassword() == null) {
+//                // 這是電話號碼相關的請求
+//                if (otpHeader == null || otpHeader.isEmpty()) {
+//                    // 1: 沒有 X-OTP Header -> 發送 OTP
+//                    smsService.sendAndCacheOtp(loginRequest.getMobilePhoneNumber());
+//                    response.setStatus(HttpStatus.OK.value());
+//                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+//                    response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.success()));
+//                } else {
+//                    // 2: 有 X-OTP Header -> 電話號碼 + OTP 登入驗證
+//                    Authentication authenticationRequest = new SmsAuthenticationToken(
+//                            loginRequest.getMobilePhoneNumber(),
+//                            otpHeader // OTP 從 Header 獲取
+//                    );
+//                    Authentication authenticationResult = authenticationManager.authenticate(authenticationRequest);
+//                    handleSuccess(request, response, authenticationResult);
+//                }
+//            } else if (loginRequest.getUsername() != null && loginRequest.getPassword() != null && loginRequest.getMobilePhoneNumber() == null) {
+//                // Scenario 3: 帳號密碼登入，帳密會先暫存，等待郵件激活
+//                Authentication authenticationRequest = new UsernamePasswordAuthenticationToken(
+//                        loginRequest.getUsername(),
+//                        loginRequest.getPassword()
+//                );
+//                Authentication authenticationResult = authenticationManager.authenticate(authenticationRequest);
+//                handleSuccess(request, response, authenticationResult);
+//            } else {
+//                // 其他無效的請求組合
+//                throw new BadCredentialsException("Invalid login request: Please provide either username/password or phone number (with/without OTP header).");
+//            }
+        // 驗證失敗應該會進入AuthenticationEntryPoint
+        //        } catch (AuthenticationException e) {
+        //            handleFailure(request, response, e);
+//        } catch (IOException e) {
+//            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+//            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+//            response.getWriter().write(objectMapper.writeValueAsString(Map.of("message", "Invalid request body or an internal server error occurred.")));
+//        }
     }
 
     private void handleSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
