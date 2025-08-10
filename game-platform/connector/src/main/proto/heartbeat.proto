@@ -1,0 +1,32 @@
+syntax = "proto3";
+// 定義一個名為 common 的套件
+package common;
+option java_multiple_files = true;
+option java_package = "com.example.proto";
+option java_outer_classname = "HeartBeatProto";
+
+// ----------------------------------------------------
+// 客戶端發送的心跳請求
+// ----------------------------------------------------
+message HeartbeatRequest {
+  // 用於識別玩家會話的唯一 ID。
+  // 在 WebSocket 連線中，可以在建立連線時傳遞此 ID。
+  string session_id = 1;
+
+  // 客戶端發送請求的時間戳記（毫秒）。
+  // 用於計算網路往返延遲。
+  int64 client_timestamp_ms = 2;
+}
+
+// ----------------------------------------------------
+// 伺服器回傳的心跳回應
+// ----------------------------------------------------
+message HeartbeatResponse {
+  // 伺服器接收到請求的時間戳記（毫秒）。
+  // 用於計算網路延遲。
+  int64 server_timestamp_ms = 1;
+
+  // 伺服器將客戶端發送的時間戳記原樣回傳。
+  // 這樣客戶端就能透過 `現在時間 - client_timestamp_ms` 來計算 Ping 值。
+  int64 client_timestamp_ms = 2;
+}
