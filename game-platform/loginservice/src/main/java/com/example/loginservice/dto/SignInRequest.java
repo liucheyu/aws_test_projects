@@ -2,11 +2,12 @@ package com.example.loginservice.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.io.Serializable;
+
 @Data
-public class SignInRequest {
+public class SignInRequest  implements Serializable {
     @NotBlank(message = "Username cannot be empty")
     @Email
     private String email;

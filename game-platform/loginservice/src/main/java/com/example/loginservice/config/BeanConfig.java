@@ -22,22 +22,5 @@ public class BeanConfig {
         return new ObjectMapper();
     }
 
-    @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
-        template.setConnectionFactory(connectionFactory);
 
-        // 設定鍵的序列化器：使用 StringRedisSerializer，確保鍵是可讀的字串
-        template.setKeySerializer(new StringRedisSerializer());
-
-        // 設定值的序列化器：使用 GenericJackson2JsonRedisSerializer，將 Java 物件序列化為 JSON
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-
-        // 設定 Hash 類型的鍵和值的序列化器
-        template.setHashKeySerializer(new StringRedisSerializer());
-        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
-
-        template.afterPropertiesSet();
-        return template;
-    }
 }

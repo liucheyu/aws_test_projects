@@ -2,6 +2,7 @@ package com.example.loginservice.service;
 
 import com.example.common.common.ApiCommonException;
 import com.example.common.common.ResponseCode;
+import com.example.common.config.CacheEnum;
 import com.example.loginservice.dto.SignInRequest;
 import com.example.common.util.PrefixUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -20,7 +21,7 @@ public class EmailService {
     private static final long CACHE_TIME_MILLIS = 5 * 1000 * 60;
 
     public void sendEmailAndCache(SignInRequest signInRequest, String subject, String body) throws JsonProcessingException {
-        String key = PrefixUtil.getKeyWithPrefix(PrefixUtil.Prefix.EMAIL, signInRequest.getEmail());
+        String key = PrefixUtil.getKeyWithPrefix(CacheEnum.EMAIL, signInRequest.getEmail());
 
         if(redisTemplate.hasKey(key)) {
             throw new ApiCommonException(ResponseCode.DATA_ALREADY_EXISTS);
@@ -40,7 +41,7 @@ public class EmailService {
     }
 
     public void cacheCode(String email, String activationCode) throws JsonProcessingException {
-        String key = PrefixUtil.getKeyWithPrefix(PrefixUtil.Prefix.EMAIL, email);
+        String key = PrefixUtil.getKeyWithPrefix(CacheEnum.EMAIL, email);
 
         if(redisTemplate.hasKey(key)) {
             throw new ApiCommonException(ResponseCode.DATA_ALREADY_EXISTS);
@@ -50,7 +51,7 @@ public class EmailService {
     }
 
     public SignInRequest getCacheData(String email, String activationCode) throws JsonProcessingException {
-        String key = PrefixUtil.getKeyWithPrefix(PrefixUtil.Prefix.EMAIL, email);
+        String key = PrefixUtil.getKeyWithPrefix(CacheEnum.EMAIL, email);
 
         String data = redisTemplate.opsForValue().get(key);
         if(data == null) {
@@ -61,7 +62,7 @@ public class EmailService {
     }
 
     public void validateActivationCode(String email, String activationCode,String  requestCode) throws JsonProcessingException {
-        String key = PrefixUtil.getKeyWithPrefix(PrefixUtil.Prefix.EMAIL, email);
+        String key = PrefixUtil.getKeyWithPrefix(CacheEnum.EMAIL, email);
 
         if (!activationCode.equals(requestCode)) {
             throw new ApiCommonException(ResponseCode.INVALID_ACTIVATION_CODE);
@@ -72,7 +73,7 @@ public class EmailService {
     }
 
     public boolean validateActivationCode(String email, String activationCode) {
-        String key = PrefixUtil.getKeyWithPrefix(PrefixUtil.Prefix.EMAIL, email);
+        String key = PrefixUtil.getKeyWithPrefix(CacheEnum.EMAIL, email);
 
         String cacheOtp = redisTemplate.opsForValue().get(key);
 
