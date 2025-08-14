@@ -4,6 +4,7 @@ import com.example.common.util.JwtUtil;
 import io.grpc.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.annotation.Order;
 import org.springframework.grpc.server.GlobalServerInterceptor;
 import org.springframework.stereotype.Component;

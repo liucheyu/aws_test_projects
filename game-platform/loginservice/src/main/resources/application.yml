@@ -2,11 +2,6 @@
 server:
   port: 8080
 
-# JWT 配置
-jwt:
-  secret: yourVerySecretKeyForJWTAuthenticationWhichShouldBeLongAndComplex # 請替換為您自己的強密鑰
-  expiration: 3600000 # 1 小時 (毫秒)
-
 spring:
   config:
     import: secrets.yaml

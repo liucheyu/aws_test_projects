@@ -4,7 +4,9 @@ import com.example.proto.GameServiceGrpc;
 import com.example.proto.HeartbeatRequest;
 import com.example.proto.HeartbeatResponse;
 import io.grpc.stub.StreamObserver;
+import org.springframework.stereotype.Component;
 
+@Component
 public class GameGrpcService extends GameServiceGrpc.GameServiceImplBase {
     @Override
     public void checkHeartbeat(HeartbeatRequest request, StreamObserver<HeartbeatResponse> responseObserver) {
