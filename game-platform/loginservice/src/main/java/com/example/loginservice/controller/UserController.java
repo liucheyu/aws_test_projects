@@ -62,8 +62,8 @@ public class UserController {
     public ResponseEntity<ApiResponse> signInEmailActivate(@RequestParam("email") String email,
                                                            @RequestParam("activationCode") String activationCode) throws JsonProcessingException {
 
-        SignInRequest cacheData = emailService.getCacheData(email, activationCode);
-        emailService.validateActivationCode(email, activationCode, cacheData.getEmail());
+        SignInRequest cacheData = emailService.popCacheDataAndValidate(email, activationCode);
+        //emailService.validateActivationCode(email, activationCode, cacheData.getEmail());
         User user = new User();
         user.setUsername(cacheData.getEmail());
         user.setEmail(cacheData.getEmail());

@@ -14,6 +14,7 @@ public enum ResponseCode {
     INVALID_ACTIVATION_CODE(1006, "Invalid activation code"),
     INVALID_LOGIN_REQUEST(1007, "Invalid activation code"),
     ACTIVATION_CODE_NOT_EXPIRED(1008, "Invalid activation code"),
+    EMAIL_NOT_MATCH(1009, "Email not match"),
 
     INTERNAL_SERVER_ERROR(500, "Internal Server Error"),
     ACCESS_DENIED(401, "Access Denied"),

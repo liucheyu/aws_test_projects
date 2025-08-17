@@ -78,22 +78,25 @@ public class SmsService {
 
     public void sendAndCacheOtp(String phoneNumber) throws JsonProcessingException {
         String opt = OptUtil.generateOpt(6);
-        String key = PrefixUtil.getKeyWithPrefix(CacheEnum.MOBILE, opt);
+        cacheSingle(phoneNumber, opt);
 
-        if (redisTemplate.hasKey(key)) {
-            throw new ApiCommonException(ResponseCode.ACTIVATION_CODE_NOT_EXPIRED);
-        }
+        // 手動調用
+//        String key = PrefixUtil.getKeyWithPrefix(CacheEnum.MOBILE, opt);
+//        if (redisTemplate.hasKey(key)) {
+//            throw new ApiCommonException(ResponseCode.ACTIVATION_CODE_NOT_EXPIRED);
+//        }
+//
+//
+//        redisTemplate.opsForValue().set(key, phoneNumber, Duration.ofMillis(OTP_VALID_DURATION_MS));
 
-
-        redisTemplate.opsForValue().set(key, phoneNumber, Duration.ofMillis(OTP_VALID_DURATION_MS));
         // 這裡會呼叫第三方簡訊 API 發送簡訊
         // 例如：twilioClient.messages.create(...);
     }
     public boolean validateOtp(String phoneNumber, String otp) {
-        //SignInMobilePhoneRequest cache = getCache(otp);
+        String cache = getCacheSingle(otp);
         //手動調用:
-        String key = PrefixUtil.getKeyWithPrefix(CacheEnum.MOBILE, otp);
-        String cache = redisTemplate.opsForValue().get(key);
+//        String key = PrefixUtil.getKeyWithPrefix(CacheEnum.MOBILE, otp);
+//        String cache = redisTemplate.opsForValue().get(key);
 
         return phoneNumber.equals(cache);
     }

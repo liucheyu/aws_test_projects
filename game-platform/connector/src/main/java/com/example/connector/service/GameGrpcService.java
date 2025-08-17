@@ -1,8 +1,8 @@
 package com.example.connector.service;
 
-import com.example.proto.GameServiceGrpc;
-import com.example.proto.HeartbeatRequest;
-import com.example.proto.HeartbeatResponse;
+import com.example.connector.proto.GameServiceGrpc;
+import com.example.game.proto.HeartbeatRequest;
+import com.example.game.proto.HeartbeatResponse;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Component;
 

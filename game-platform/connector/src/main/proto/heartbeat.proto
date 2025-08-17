@@ -1,8 +1,9 @@
+// heartbeat.proto
 syntax = "proto3";
 // 定義一個名為 common 的套件
-package common;
+package com.example.proto;
 option java_multiple_files = true;
-option java_package = "com.example.proto";
+option java_package = "com.example.game.proto";
 option java_outer_classname = "HeartBeatProto";
 
 // ----------------------------------------------------
