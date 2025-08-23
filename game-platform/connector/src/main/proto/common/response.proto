@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+import "common/heartbeat.proto";
+
+option java_multiple_files = true;
+option java_package = "com.example.proto.common";
+option java_outer_classname = "CommonResponseProto";
+
+message ResponseMessage {
+  enum Status {
+    SUCCESS = 0;
+    ERROR = 1;
+    INVALID_REQUEST = 2;
+    UNAUTHORIZED = 3;
+    // 其他的錯誤碼定義在這
+  }
+
+  Status status = 1;
+  string error_message =2;
+
+  oneof payload {
+    common.HeartbeatResponse heartbeat_request = 3;
+  }
+}

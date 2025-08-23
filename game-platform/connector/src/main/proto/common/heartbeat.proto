@@ -1,11 +1,11 @@
-// heartbeat.proto
 syntax = "proto3";
-// 定義一個名為 common 的套件
-package com.example.proto;
-option java_multiple_files = true;
-option java_package = "com.example.game.proto";
-option java_outer_classname = "HeartBeatProto";
 
+// 定義一個通用的套件
+package common;
+
+option java_multiple_files = true;
+option java_package = "com.example.proto.common";
+option java_outer_classname = "CommonHeartbeatProto";
 // ----------------------------------------------------
 // 客戶端發送的心跳請求
 // ----------------------------------------------------

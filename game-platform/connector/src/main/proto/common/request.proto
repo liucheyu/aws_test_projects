@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+// 定義一個通用的套件
+package common;
+
+import "common/heartbeat.proto"; // 假設你的心跳訊息在這裡
+//import "player_state.proto"; // 假設你的玩家狀態訊息在這裡
+
+option java_multiple_files = true;
+option java_package = "com.example.proto.common";
+option java_outer_classname = "CommonRequestProto";
+
+// ----------------------------------------------------
+// 通用請求訊息封裝器
+// ----------------------------------------------------
+message RequestMessage {
+  // 使用 oneof 來封裝所有可能的請求類型
+  oneof payload {
+    common.HeartbeatRequest heartbeat_request = 1;
+    //PlayerStateSyncRequest player_state_sync_request = 2;
+    // ... 其他業務邏輯請求，例如：
+    //GameActionRequest game_action_request = 3;
+    //ChatRequest chat_request = 4;
+  }
+}
