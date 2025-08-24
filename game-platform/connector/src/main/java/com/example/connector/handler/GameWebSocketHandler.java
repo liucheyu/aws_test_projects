@@ -1,5 +1,6 @@
 package com.example.connector.handler;
 
+import com.example.connector.handler.ProtoMessageHandler;
 import com.example.proto.common.RequestMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -32,16 +33,14 @@ public class GameWebSocketHandler implements WebSocketHandler {
                         );
 
                         // 2. 檢測可用的handler
-                        Optional<ProtoMessageHandler> optional = messageHandlers.stream()
+                        // 3. 執行並返回結果
+                        return messageHandlers.stream()
                                 .filter(handler -> handler.test(requestMessage))
-                                .findFirst();
+                                .findFirst()
+                                .map(hadler -> hadler.handle(session, null, requestMessage))
+                                .map(responseMessage -> session.send(Mono.just(session.binaryMessage(factory -> factory.wrap(responseMessage.toByteArray())))))
+                                .orElse(Mono.empty());
 
-                        if (optional.isEmpty()) {
-                            return Mono.empty();
-                        }
-
-                        //3. 執行並返回結果
-                        return optional.get().handle(session, requestMessage);
 
                     } catch (Exception e) {
                         System.err.println("Failed to parse Protobuf message: " + e.getMessage());
@@ -49,11 +48,7 @@ public class GameWebSocketHandler implements WebSocketHandler {
                         return Mono.empty();
                     }
 
-                }).flatMap(responseMessage -> {
-                    byte[] responseBytes = responseMessage.toByteArray();
-                    return session.send(Mono.just(session.binaryMessage(factory -> factory.wrap(responseBytes))));
-                })
-                .then();
+                }).then();
     }
 
 }

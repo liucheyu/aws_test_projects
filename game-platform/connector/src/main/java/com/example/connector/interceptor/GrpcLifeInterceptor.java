@@ -36,7 +36,7 @@ public class GrpcLifeInterceptor
 
         // 將處理權移交給下一個攔截器或 gRPC 服務實作
         ServerCall.Listener<ReqT> originalListener = serverCallHandler.startCall(serverCall, metadata);
-
+        //Context context = Context.current().withValue(GrpcContextKeys.USER_ID, userId);
         // --- 2. 返回一個包裝過的 Listener，以便在呼叫結束後執行後置邏輯 ---
         return new ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(originalListener) {
             @Override

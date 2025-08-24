@@ -1,7 +1,8 @@
 syntax = "proto3";
 
 // 引用通用的心跳檔案
-import "common/heartbeat.proto";
+import "common/request.proto";
+import "common/response.proto";
 
 // 定義一個遊戲服務的套件
 package game;
@@ -11,8 +12,5 @@ option java_package = "com.example.proto.game";
 option java_outer_classname = "GameServiceProto";
 // 定義心跳服務
 service GameService {
-  // 定義一個名為 CheckHeartbeat 的 RPC 方法
-  // 它接收一個 HeartbeatRequest 訊息，並回傳一個 HeartbeatResponse 訊息
-  rpc CheckHeartbeat (common.HeartbeatRequest) returns (common.HeartbeatResponse);
-  rpc StreamCheckHeartbeat(common.HeartbeatRequest) returns (stream common.HeartbeatResponse) {}
+  rpc GameStream (stream common.RequestMessage) returns (stream  common.ResponseMessage);
 }
